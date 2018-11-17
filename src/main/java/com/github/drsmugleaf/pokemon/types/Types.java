@@ -45,6 +45,12 @@ public class Types implements IModifier {
     public void setTypes(@NotNull Type... types) {
         setTypes(Arrays.asList(types));
     }
+    public boolean isSuperEffective(@NotNull Action action){
+        if (damageMultiplier(action) == 4){
+
+        }
+        return true;
+    }
 
     public boolean isImmune(@NotNull Move move) {
         Type moveType = move.getType();

@@ -6,9 +6,12 @@ import com.github.drsmugleaf.pokemon.pokemon.Pokemon;
 import com.github.drsmugleaf.pokemon.stats.IStat;
 import com.github.drsmugleaf.pokemon.status.Status;
 import com.github.drsmugleaf.pokemon.trainer.Trainer;
+import com.github.drsmugleaf.pokemon.moves.BaseMove;
 import org.jetbrains.annotations.NotNull;
 
 import org.jetbrains.annotations.Nullable;
+
+import java.util.List;
 
 /**
  * Created by DrSmugleaf on 18/09/2017.
@@ -45,6 +48,15 @@ public interface IModifier {
 
     default boolean onOwnReceiveAttack(@NotNull Pokemon attacker, @NotNull Pokemon defender, @NotNull Action action) {
         return true;
+    }
+    default boolean onOwnReceiveDamage(@NotNull Pokemon attacker, @NotNull Pokemon defender, @NotNull Action action) {
+        return true;
+    }
+    default void onApplyStatus(@NotNull Pokemon attacker, @NotNull Pokemon defender, @NotNull Status status) {}
+
+    @NotNull
+    default List<BaseMove> getValidMoves(@NotNull Pokemon pokemon) {
+        return pokemon.MOVES.getValid();
     }
 
     default void onEnemyReceiveAttack(@NotNull Pokemon attacker, @NotNull Pokemon defender, @NotNull Action action) {}

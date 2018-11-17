@@ -1,13 +1,29 @@
 package com.github.drsmugleaf.pokemon.item;
 
-import com.github.drsmugleaf.pokemon.battle.Battle;
-import com.github.drsmugleaf.pokemon.battle.IModifier;
+import com.github.drsmugleaf.pokemon.battle.*;
+import com.github.drsmugleaf.pokemon.moves.BaseMove;
+import com.github.drsmugleaf.pokemon.moves.Move;
+import com.github.drsmugleaf.pokemon.moves.MoveCategory;
+import com.github.drsmugleaf.pokemon.pokemon.Nature;
 import com.github.drsmugleaf.pokemon.pokemon.Pokemon;
+import com.github.drsmugleaf.pokemon.pokemon.Species;
+import com.github.drsmugleaf.pokemon.stats.PermanentStat;
+import com.github.drsmugleaf.pokemon.stats.Stage;
+import com.github.drsmugleaf.pokemon.status.BaseVolatileStatus;
+import com.github.drsmugleaf.pokemon.status.Status;
+import com.github.drsmugleaf.pokemon.types.Type;
 
+import com.github.drsmugleaf.pokemon.types.Types;
+import org.apache.commons.lang3.ObjectUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import javax.xml.stream.StreamFilter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Created by DrSmugleaf on 09/06/2017.
@@ -17,20 +33,110 @@ public enum Items implements IModifier {
     NONE("None"),
     ABOMASITE("Abomasite", ItemCategory.MEGA_STONE),
     ABSOLITE("Absolite", ItemCategory.MEGA_STONE),
-    ABSORB_BULB("Absorb Bulb"),
-    ADAMANT_ORB("Adamant Orb"),
+    ABSORB_BULB("Absorb Bulb") {
+        @Override
+        public boolean onOwnReceiveAttack(Pokemon attacker, Pokemon defender, Action action) {
+            if(action.getType() == Type.WATER && action.getCategory() != MoveCategory.OTHER) {
+                if  (
+                        defender.STATS.getStages().get(PermanentStat.SPECIAL_ATTACK) != Stage.POSITIVE_SIX ||
+                                !defender.affectedBy(action)
+                    ) {
+                    defender.ITEM.remove();
+                }
+                defender.STATS.raiseStages(1, PermanentStat.SPECIAL_ATTACK);
+            }
+            return true;
+
+        }
+    },
+    ADAMANT_ORB("Adamant Orb") {
+        @Override
+        public double powerMultiplier(Pokemon attacker, Action action) {
+            if (attacker.SPECIES == Species.DIALGA &&(action.getType() == Type.DRAGON || action.getType() == Type.STEEL)){
+
+                return  1.2;
+
+            } else
+                return 1.0;
+
+        }
+    },
     AERODACTYLITE("Aerodactylite", ItemCategory.MEGA_STONE),
     AGGRONITE("Aggronite", ItemCategory.MEGA_STONE),
-    AGUAV_BERRY("Aguav Berry", ItemCategory.BERRY),
+    AGUAV_BERRY("Aguav Berry", ItemCategory.BERRY){
+        @Override
+        public boolean onOwnReceiveDamage(@NotNull Pokemon attacker, @NotNull Pokemon defender, @NotNull Action action) {
+            switch (action.getGeneration()) {
+
+                case I:
+                case II:
+                case III:
+                case IV:
+                case V:
+                case VI:
+                    if (defender.getHP() <= defender.getMaxHP() / 2.0){
+                        defender.heal(12.5);
+                    }
+                    break;
+                case VII:
+                    if (defender.getHP() <= defender.getMaxHP() / 4){
+                        defender.heal(50.0);
+                    }
+                    break;
+                    default:
+                        throw new InvalidGenerationException(action.getGeneration());
+
+            }
+            if (defender.NATURE == Nature.NAUGHTY || defender.NATURE == Nature.LAX || defender.NATURE == Nature.RASH || defender.NATURE == Nature.NAIVE){
+                BaseVolatileStatus.CONFUSION.apply(defender, action);
+            }
+            return true;
+
+        }
+    },
     AIR_BALLOON("Air Balloon"),
     ALAKAZITE("Alakazite", ItemCategory.MEGA_STONE),
     ALTARIANITE("Altarianite", ItemCategory.MEGA_STONE),
     AMPHAROSITE("Ampharosite", ItemCategory.MEGA_STONE),
-    APICOT_BERRY("Apicot Berry", ItemCategory.BERRY),
-    ASPEAR_BERRY("Aspear Berry", ItemCategory.BERRY),
-    ASSAULT_VEST("Assault Vest"),
+    APICOT_BERRY("Apicot Berry", ItemCategory.BERRY){
+        @Override
+        public boolean onOwnReceiveDamage(@NotNull Pokemon attacker, @NotNull Pokemon defender, @NotNull Action action) {
+            if (defender.getHP() <= defender.getMaxHP() / 4.0) {
+                defender.STATS.raiseStages(1, PermanentStat.SPECIAL_DEFENSE);
+            }
+            return true;
+        }
+    },
+    ASPEAR_BERRY("Aspear Berry", ItemCategory.BERRY){
+        @Override
+        public void onApplyStatus(@NotNull Pokemon attacker, @NotNull Pokemon defender, @NotNull Status status) {
+            if (defender.STATUSES.getStatus() == Status.FREEZE){
+                defender.STATUSES.resetStatus();
+            }
+        }
+    },
+    ASSAULT_VEST("Assault Vest"){
+        @NotNull
+        @Override
+        public List<BaseMove> getValidMoves(@NotNull Pokemon pokemon) {
+            if (pokemon.ITEM.get() == ASSAULT_VEST){
+                List<BaseMove> moves = pokemon.MOVES.getValid().stream().filter(move -> move.CATEGORY == move.CATEGORY.OTHER).collect(Collectors.toList());
+
+                pokemon.MOVES.disable(1,moves);
+            }
+            return null;
+        }
+    },
     AUDINITE("Audinite", ItemCategory.MEGA_STONE),
-    BABIRI_BERRY("Babiri Berry", ItemCategory.BERRY),
+    BABIRI_BERRY("Babiri Berry", ItemCategory.BERRY){
+        @Override
+        public double enemyDamageMultiplier(@NotNull Pokemon pokemon, @NotNull Action action) {
+            if (action.getType() == Type.STEEL && action.getTargetPokemon().TYPES.isSuperEffective(action)){
+            }
+            return 0.5;
+
+        }
+    },
     BANETTITE("Banettite", ItemCategory.MEGA_STONE),
     BEEDRILLITE("Beedrillite", ItemCategory.MEGA_STONE),
     BERRY("Berry", ItemCategory.BERRY),
@@ -367,4 +473,11 @@ public enum Items implements IModifier {
         static Map<String, Items> MAP = new HashMap<>();
     }
 
+
+
+
+
+
 }
+
+
