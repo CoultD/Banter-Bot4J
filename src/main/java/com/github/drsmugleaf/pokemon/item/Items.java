@@ -7,13 +7,18 @@ import com.github.drsmugleaf.pokemon.moves.MoveCategory;
 import com.github.drsmugleaf.pokemon.pokemon.Nature;
 import com.github.drsmugleaf.pokemon.pokemon.Pokemon;
 import com.github.drsmugleaf.pokemon.pokemon.Species;
+import com.github.drsmugleaf.pokemon.stats.IStat;
 import com.github.drsmugleaf.pokemon.stats.PermanentStat;
 import com.github.drsmugleaf.pokemon.stats.Stage;
 import com.github.drsmugleaf.pokemon.status.BaseVolatileStatus;
 import com.github.drsmugleaf.pokemon.status.Status;
+import com.github.drsmugleaf.pokemon.status.Statuses;
+import com.github.drsmugleaf.pokemon.status.VolatileStatus;
+import com.github.drsmugleaf.pokemon.trainer.Trainer;
 import com.github.drsmugleaf.pokemon.types.Type;
 
 import com.github.drsmugleaf.pokemon.types.Types;
+import com.sun.deploy.security.ValidationState;
 import org.apache.commons.lang3.ObjectUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -22,6 +27,7 @@ import javax.xml.stream.StreamFilter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -52,7 +58,7 @@ public enum Items implements IModifier {
     ADAMANT_ORB("Adamant Orb") {
         @Override
         public double powerMultiplier(Pokemon attacker, Action action) {
-            if (attacker.SPECIES == Species.DIALGA &&(action.getType() == Type.DRAGON || action.getType() == Type.STEEL)){
+            if (attacker.SPECIES == Species.DIALGA &&(action.getType() == Type.DRAGON || action.getType() == Type.STEEL)) {
 
                 return  1.2;
 
@@ -87,9 +93,10 @@ public enum Items implements IModifier {
                         throw new InvalidGenerationException(action.getGeneration());
 
             }
-            if (defender.NATURE == Nature.NAUGHTY || defender.NATURE == Nature.LAX || defender.NATURE == Nature.RASH || defender.NATURE == Nature.NAIVE){
+            if (defender.NATURE == Nature.NAUGHTY || defender.NATURE == Nature.LAX || defender.NATURE == Nature.RASH || defender.NATURE == Nature.NAIVE) {
                 BaseVolatileStatus.CONFUSION.apply(defender, action);
             }
+            defender.ITEM.remove();
             return true;
 
         }
@@ -103,35 +110,37 @@ public enum Items implements IModifier {
         public boolean onOwnReceiveDamage(@NotNull Pokemon attacker, @NotNull Pokemon defender, @NotNull Action action) {
             if (defender.getHP() <= defender.getMaxHP() / 4.0) {
                 defender.STATS.raiseStages(1, PermanentStat.SPECIAL_DEFENSE);
+                defender.ITEM.remove();
             }
             return true;
         }
     },
-    ASPEAR_BERRY("Aspear Berry", ItemCategory.BERRY){
+    ASPEAR_BERRY("Aspear Berry", ItemCategory.BERRY) {
         @Override
         public void onApplyStatus(@NotNull Pokemon attacker, @NotNull Pokemon defender, @NotNull Status status) {
             if (defender.STATUSES.getStatus() == Status.FREEZE){
                 defender.STATUSES.resetStatus();
+                defender.ITEM.remove();
             }
         }
     },
     ASSAULT_VEST("Assault Vest"){
-        @NotNull
         @Override
-        public List<BaseMove> getValidMoves(@NotNull Pokemon pokemon) {
-            if (pokemon.ITEM.get() == ASSAULT_VEST){
-                List<BaseMove> moves = pokemon.MOVES.getValid().stream().filter(move -> move.CATEGORY == move.CATEGORY.OTHER).collect(Collectors.toList());
+        public void onTrainerTurnStart(@NotNull Trainer trainer, @NotNull Pokemon pokemon) {
 
-                pokemon.MOVES.disable(1,moves);
+        if (pokemon.ITEM.get() == ASSAULT_VEST) {
+            List<BaseMove> moves = pokemon.MOVES.getValid().stream().filter(move -> move.CATEGORY == move.CATEGORY.OTHER).collect(Collectors.toList());
+
+            pokemon.MOVES.disable(1, moves);
+
             }
-            return null;
         }
     },
     AUDINITE("Audinite", ItemCategory.MEGA_STONE),
-    BABIRI_BERRY("Babiri Berry", ItemCategory.BERRY){
+    BABIRI_BERRY("Babiri Berry", ItemCategory.BERRY) {
         @Override
         public double enemyDamageMultiplier(@NotNull Pokemon pokemon, @NotNull Action action) {
-            if (action.getType() == Type.STEEL && action.getTargetPokemon().TYPES.isSuperEffective(action)){
+            if (action.getType() == Type.STEEL && action.getTargetPokemon().TYPES.isSuperEffective(action)) {
             }
             return 0.5;
 
@@ -139,20 +148,152 @@ public enum Items implements IModifier {
     },
     BANETTITE("Banettite", ItemCategory.MEGA_STONE),
     BEEDRILLITE("Beedrillite", ItemCategory.MEGA_STONE),
-    BERRY("Berry", ItemCategory.BERRY),
-    BERRY_JUICE("Berry Juice"),
-    BERSERK_GENE("Berserk Gene"),
-    BIG_ROOT("Big Root"),
+    BERRY("Berry", ItemCategory.BERRY) {
+        @Override
+        public boolean onOwnReceiveDamage(@NotNull Pokemon attacker, @NotNull Pokemon defender, @NotNull Action action) {
+            if(defender.getMaxHP() <= 2.0 ) {
+                defender.heal(10);
+                defender.ITEM.remove();
+            }
+            return true;
+        }
+    },
+    BERRY_JUICE("Berry Juice") {
+        @Override
+        public boolean onOwnReceiveDamage(@NotNull Pokemon attacker, @NotNull Pokemon defender, @NotNull Action action) {
+            if(defender.getMaxHP() <= 2.0 ) {
+                defender.heal(20);
+                defender.ITEM.remove();
+            }
+            return true;
+        }
+    },
+    BERSERK_GENE("Berserk Gene") {
+        @Override
+        public void onOwnSendOut(@NotNull Pokemon pokemon) {
+
+        }
+    },
+    BIG_ROOT("Big Root") {
+        @Override
+        public double HealMultiplier(@NotNull Pokemon pokemon, @NotNull Action action) {
+        //TODO: ONLY DRAINING MOVES
+            return 1.30;
+        }
+    },
     BINDING_BAND("Binding Band"),
-    BITTER_BERRY("Bitter Berry", ItemCategory.BERRY),
-    BLACK_BELT("Black Belt"),
-    BLACK_SLUDGE("Black Sludge"),
-    BLACK_GLASSES("Black Glasses"),
+    BITTER_BERRY("Bitter Berry", ItemCategory.BERRY){
+        @Override
+        public void onApplyStatus(@NotNull Pokemon attacker, @NotNull Pokemon defender, @NotNull Status status) {
+            Statuses statuses = defender.STATUSES;
+            if(statuses.hasVolatileStatus(BaseVolatileStatus.CONFUSION)); {
+                statuses.removeVolatileStatus(BaseVolatileStatus.CONFUSION);
+            }
+        }
+    },
+    BLACK_BELT("Black Belt"){
+        @Override
+        public double damageMultiplier(@NotNull Action action) {
+            switch (action.getGeneration()) {
+
+                case II:
+                case III:
+                    if (action.getType() == Type.FIGHTING) {
+                        return 1.1;
+
+                        }
+                        break;
+                case IV:
+                case V:
+                case VI:
+                case VII:
+                    if (action.getType() == Type.FIGHTING){
+                        return 1.2;
+
+                    }
+                    break;
+                    default:
+                        throw new InvalidGenerationException(action.getGeneration());
+
+            }
+            return 1.0;
+
+        }
+    },
+    BLACK_SLUDGE("Black Sludge"){
+        @Override
+        public void onTurnEnd(@NotNull Battle battle, @NotNull Pokemon pokemon) {
+            if (pokemon.TYPES.isType(Type.POISON)) {
+                pokemon.heal(6.25);
+            }
+            else
+                pokemon.damage(12.5);
+        }
+    },
+    BLACK_GLASSES("Black Glasses") {
+        @Override
+        public double damageMultiplier(@NotNull Action action) {
+            if (action.getType() == Type.DARK) {
+                switch (action.getGeneration()) {
+                    case I:
+                    case II:
+                    case III:
+                        return 1.1;
+                    case IV:
+                    case V:
+                    case VI:
+                    case VII:
+                        return 1.2;
+                    default:
+                        throw new InvalidGenerationException(action.getGeneration());
+                }
+            }
+
+            return 1.0;
+        }
+    },
     BLASTOISINITE("Blastoisinite", ItemCategory.MEGA_STONE),
     BLAZIKENITE("Blazikenite", ItemCategory.MEGA_STONE),
     BLUE_ORB("Blue Orb", ItemCategory.PRIMAL_ORB),
-    BRIGHT_POWDER("Bright Powder"),
-    BUG_GEM("Bug Gem"),
+    BRIGHT_POWDER("Bright Powder") {
+        @Override
+        public boolean onOwnReceiveAttack(@NotNull Pokemon attacker, @NotNull Pokemon defender, @NotNull Action action) {
+            switch (action.getGeneration()) {
+                case I:
+                case II:
+                    double random = ThreadLocalRandom.current().nextDouble();
+                    if (random < 7.8125){
+                        return false;
+                    }
+                    //TODO gen III and onward
+            }
+            return true;
+        }
+    },
+    BUG_GEM("Bug Gem") {
+        @Override
+        public double powerMultiplier(@NotNull Pokemon attacker, @NotNull Action action) {
+            if (action.getType() == Type.BUG) {
+                switch (action.getGeneration()) {
+                    case I:
+                    case II:
+                    case III:
+                    case IV:
+                    case V:
+                        attacker.ITEM.remove();
+                        return 1.5;
+                    case VI:
+                    case VII:
+                        attacker.ITEM.remove();
+                        return 1.3;
+                        default:
+                            throw new InvalidGenerationException(action.getGeneration());
+                }
+            }
+
+            return 1.0;
+        }
+    },
     BURN_DRIVE("Burn Drive", ItemCategory.GENESECT_DRIVE),
     CAMERUPTITE("Cameruptite", ItemCategory.MEGA_STONE),
     CELL_BATTERY("Cell Battery"),

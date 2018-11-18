@@ -54,10 +54,7 @@ public interface IModifier {
     }
     default void onApplyStatus(@NotNull Pokemon attacker, @NotNull Pokemon defender, @NotNull Status status) {}
 
-    @NotNull
-    default List<BaseMove> getValidMoves(@NotNull Pokemon pokemon) {
-        return pokemon.MOVES.getValid();
-    }
+    default double HealMultiplier(@NotNull Pokemon pokemon, @NotNull Action action){ return  1.0; }
 
     default void onEnemyReceiveAttack(@NotNull Pokemon attacker, @NotNull Pokemon defender, @NotNull Action action) {}
 
